@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrolling Zigzag Animation</title>
+    <style>
+        /* Reset margins and hide scrollbars for full screen immersion */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        /* 
+           The animation canvas uses repeating CSS math to draw thick stripes.
+           By making the background width exactly double the pattern size (200px),
+           the loop connects perfectly when we animate the background-position.
+        */
+        .zigzag-canvas {
+            width: 100%;
+            height: 100%;
+            
+            /* Sharp, unblended tri-color linear gradient segments forming triangles */
+            background-image: 
+                linear-gradient(135deg, #FF5722 25%, transparent 25%), 
+                linear-gradient(225deg, #FF5722 25%, transparent 25%), 
+                linear-gradient(45deg, #4CAF50 25%, transparent 25%), 
+                linear-gradient(315deg, #4CAF50 25%, #E040FB 25%);
+            
+            /* This defines the scale and thickness of the zigzags */
+            background-size: 200px 200px;
+            
+            /* Offsets the layered gradients to slot together into a continuous interlocking zigzag */
+            background-position: -100px 0, -100px 0, 0 0, 0 0;
+
+            /* Infinitely scrolls left-to-right over 4 seconds */
+            animation: scroll-right 4s infinite linear;
+        }
+
+        /* 
+           SCROLL ANIMATION
+           Moving the background-position by a multiple of the background-size (200px)
+           creates an invisible jump-cut back to the start for a seamless loop.
+        */
+        @keyframes scroll-right {
+            0% {
+                background-position: -100px 0, -100px 0, 0 0, 0 0;
+            }
+            100% {
+                /* Shifts exactly 200px horizontally to loop seamlessly */
+                background-position: 100px 0, 100px 0, 200px 0, 200px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="zigzag-canvas"></div>
+
+</body>
+</html>
