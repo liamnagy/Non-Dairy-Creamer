@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alternating Colors Animation</title>
+    <style>
+        /* Make the body take up the exact height and width of the window */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; /* Aligns content to the bottom */
+            /* Infinite repeating animation */
+            animation: colorChange 2s infinite steps(1, end);
+        }
+
+        /* Define the solid alternating orange and purple background steps */
+        @keyframes colorChange {
+            0%, 100% { background-color: #FFA500; } /* Solid Orange */
+            50% { background-color: #800080; }   /* Solid Purple */
+        }
+
+        /* Scaled-down overlay button positioned at the bottom */
+        #fullscreen-btn {
+            margin-bottom: 20px; /* Space from the bottom edge */
+            padding: 8px 16px;   /* Smaller padding */
+            font-size: 13px;     /* Smaller font size */
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            color: #444;
+            background-color: rgba(255, 255, 255, 0.75);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            transition: opacity 0.4s ease, background-color 0.2s ease, transform 0.2s ease; /* Snappier opacity fade */
+            z-index: 10;
+            opacity: 1; /* Fully visible by default */
+        }
+
+        #fullscreen-btn:hover {
+            background-color: rgba(255, 255, 255, 0.95);
+            transform: scale(1.03);
+        }
+
+        /* Class to handle hiding the button and hiding the cursor */
+        .hide-controls {
+            opacity: 0 !important;
+            pointer-events: none; /* Prevents clicking the invisible button */
+        }
+        
+        .hide-cursor {
+            cursor: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Full Screen Toggle Button -->
+    <button id="fullscreen-btn" onclick="toggleFullscreen()">View Full Screen</button>
+
+    <script>
+        const button = document.getElementById('fullscreen-btn');
+        let fadeTimeout;
+
+        function toggleFullscreen() {
+            // Check if the document is already in full-screen mode
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    alert(`Error trying to enable full-screen mode: ${err.message}`);
+                });
+                button.innerText = 'Exit Full Screen';
+            } else {
+                document.exitFullscreen();
+                button.innerText = 'View Full Screen';
+            }
+            resetFadeTimer(); // Reset timer on click
+        }
+        
+        // Listener to update the button text if the user exits using the 'Esc' key
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                button.innerText = 'View Full Screen';
+            }
+            resetFadeTimer();
+        });
+
+        // Function to handle automatic hiding
+        function resetFadeTimer() {
+            // Bring back the button and cursor instantly
+            button.classList.remove('hide-controls');
+            document.body.classList.remove('hide-cursor');
+            
+            // Clear any existing countdown
+            clearTimeout(fadeTimeout);
+
+            // Set a new countdown to hide elements after 1 second (1000ms)
+            fadeTimeout = setTimeout(() => {
+                button.classList.add('hide-controls');
+                document.body.classList.add('hide-cursor');
+            }, 1000);
+        }
+
+        // Trigger the timer whenever the mouse moves or clicks anywhere on the screen
+        document.addEventListener('mousemove', resetFadeTimer);
+        document.addEventListener('click', resetFadeTimer);
+
+        // Start the initial countdown when the page loads
+        resetFadeTimer();
+    </script>
+
+</body>
+</html>
