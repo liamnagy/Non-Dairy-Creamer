@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pumpkin Emoji Ripple Matrix</title>
+    <style>
+        /* Force absolute full-screen boundaries with no scrollbars */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0514; /* Deep dark autumnal violet background */
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        /* Tiny, minimalist full screen toggle anchored at the bottom */
+        #fsBtn {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.6);
+            padding: 4px 10px;
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: opacity 0.3s ease, background 0.2s ease, color 0.2s ease;
+            opacity: 1;
+        }
+        #fsBtn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrixCanvas"></canvas>
+    <button id="fsBtn">Full Screen</button>
+
+    <script>
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+        const fsBtn = document.getElementById('fsBtn');
+
+        // Grid layout definition configurations
+        const spacingX = 36; // Horizontal gaps between columns
+        const spacingY = 36; // Vertical gaps between rows
+        let cols = 0;
+        let rows = 0;
+        
+        // Tracking variable for the continuous time phase factor
+        let timePhase = 0;
+
+        // Dynamically scale canvas layout bounds to fit current browser window bounds
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            // Recalculate grid density limits based on structural viewport space
+            cols = Math.ceil(canvas.width / spacingX) + 1;
+            rows = Math.ceil(canvas.height / spacingY) + 1;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function animate() {
+            // Standard clear frame cycle setup
+            ctx.fillStyle = '#0b0514';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Configure text layout options for emoji rendering
+            ctx.font = '24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Increment timeline vector which drives global continuous current speeds
+            timePhase += 0.025; 
+
+            // Scan through rows and columns to draw the matrix grid layout positions
+            for (let c = 0; c < cols; c++) {
+                for (let r = 0; r < rows; r++) {
+                    // Standard structural grid coordinates mapping anchor spaces
+                    const baseX = c * spacingX;
+                    const baseY = r * spacingY;
+
+                    // Combined wave mapping to simulate non-uniform organic wind currents
+                    // Incorporates horizontal position, depth height vectors, and time constants
+                    const windWaveX = Math.sin(c * 0.15 + r * 0.1 + timePhase) * 12;
+                    const windWaveY = Math.cos(c * 0.1 + r * 0.2 + timePhase * 1.2) * 8;
+                    
+                    // Final calculated coordinate offsets incorporating displacement values
+                    const targetX = baseX + windWaveX;
+                    const targetY = baseY + windWaveY;
+
+                    // Save transformation state context before rotational manipulation
+                    ctx.save();
+                    ctx.translate(targetX, targetY);
+
+                    // Map tiny rotation angles aligned with wave pressure vectors to mimic wind tilt
+                    const tiltAngle = Math.sin(c * 0.2 + r * 0.15 + timePhase) * 0.25;
+                    ctx.rotate(tiltAngle);
+
+                    // Render the uniform pumpkin token
+                    ctx.fillText('🎃', 0, 0);
+                    
+                    // Reset the context state coordinate tracking map matrix
+                    ctx.restore();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // --- Inactivity & Full Screen UI Logic ---
+        let hideTimeout;
+
+        function showButton() {
+            fsBtn.style.opacity = '1';
+            fsBtn.style.pointerEvents = 'auto';
+            clearTimeout(hideTimeout);
+            // Hide the button after exactly 1 second (1000ms) of inactivity
+            hideTimeout = setTimeout(() => {
+                fsBtn.style.opacity = '0';
+                fsBtn.style.pointerEvents = 'none';
+            }, 1000);
+        }
+
+        // Reveal the button upon mouse movement, touch interaction, or keypresses
+        window.addEventListener('mousemove', showButton);
+        window.addEventListener('touchstart', showButton);
+        window.addEventListener('keydown', showButton);
+
+        // Native Full Screen Request Handler
+        fsBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Avoid triggering immediate window interactions
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch((err) => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // Initialize tracking loop sequences
+        showButton();
+        animate();
+    </script>
+</body>
+</html>
