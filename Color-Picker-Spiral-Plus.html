@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Switcher</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            transition: background-color 0.1s ease;
+        }
+
+        /* Spiral canvas styling */
+        #spiral-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: 1;
+        }
+
+        #spiral-canvas.visible {
+            opacity: 1;
+        }
+
+        /* Fullscreen button styling */
+        #fullscreen-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 16px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: opacity 0.3s ease, background-color 0.2s ease;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        #fullscreen-btn:hover {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+        #fullscreen-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="spiral-canvas"></canvas>
+
+    <button id="fullscreen-btn">View Full Screen</button>
+
+    <script>
+        const body = document.body;
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const spiralCanvas = document.getElementById('spiral-canvas');
+        const ctx = spiralCanvas.getContext('2d');
+
+        // Key mapping configuration (Numbers only)
+        const colorMap = {
+            '1': '#000000', // Black
+            '2': '#ff0000', // Red
+            '3': '#ffa500', // Orange
+            '4': '#ffff00', // Yellow
+            '5': '#008000', // Green
+            '6': '#0000ff', // Blue
+            '7': '#800080', // Purple
+            '8': '#ffffff'  // White
+        };
+
+        // Custom transition configurations for action letter keys
+        const specialTransitions = {
+            'q': { color: colorMap['1'], duration: '3.0s' },
+            'a': { color: colorMap['1'], duration: '10.0s' },
+            'w': { color: colorMap['2'], duration: '3.0s' },
+            's': { color: colorMap['2'], duration: '10.0s' },
+            'e': { color: colorMap['3'], duration: '3.0s' },
+            'd': { color: colorMap['3'], duration: '10.0s' },
+            'r': { color: colorMap['4'], duration: '3.0s' },
+            'f': { color: colorMap['4'], duration: '10.0s' },
+            't': { color: colorMap['5'], duration: '3.0s' },
+            'g': { color: colorMap['5'], duration: '10.0s' },
+            'y': { color: colorMap['6'], duration: '3.0s' },
+            'h': { color: colorMap['6'], duration: '10.0s' },
+            'u': { color: colorMap['7'], duration: '3.0s' },
+            'j': { color: colorMap['7'], duration: '10.0s' },
+            'i': { color: colorMap['8'], duration: '3.0s' },
+            'k': { color: colorMap['8'], duration: '10.0s' }
+        };
+
+        // State trackers for key press durations
+        let activeKey = null;
+        let keyPressTimer = null;
+        let isTransitioning = false;
+
+        // Auto-hide UI variable
+        let mouseMoveTimeout;
+
+        // Spiral animation state variables
+        let spiralActive = false;
+        let spiralMode = 'bw'; // 'bw' (9), 'rainbow' (0), 'blood' (-), 'strobe' (+)
+        let currentRotation = 0;
+        let baseSpeed = 1.5; // Target speed in radians per second
+        let targetSpeed = baseSpeed;
+        let currentSpeed = baseSpeed;
+        let speedTransitionStart = null;
+        let startSpeed = baseSpeed;
+        let endSpeed = baseSpeed;
+        let lastFrameTime = performance.now();
+        let hueOffset = 0;
+        const TRANSITION_DURATION = 3000; // 3-second transition duration in ms
+
+        function resizeCanvas() {
+            spiralCanvas.width = window.innerWidth;
+            spiralCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawSpiral(timestamp) {
+            const dt = (timestamp - lastFrameTime) / 1000;
+            lastFrameTime = timestamp;
+
+            // Update hue for rainbow animation mode
+            hueOffset = (hueOffset + dt * 60) % 360;
+
+            // Handle speed reversal transition over 3 seconds
+            if (speedTransitionStart !== null) {
+                const elapsed = timestamp - speedTransitionStart;
+                const progress = Math.min(elapsed / TRANSITION_DURATION, 1.0);
+                
+                // Smooth easing for direction transition
+                const easedProgress = progress < 0.5 
+                    ? 2 * progress * progress 
+                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+                currentSpeed = startSpeed + (endSpeed - startSpeed) * easedProgress;
+
+                if (progress >= 1.0) {
+                    speedTransitionStart = null;
+                    currentSpeed = endSpeed;
+                }
+            }
+
+            // Update rotation angle based on current speed
+            currentRotation += currentSpeed * dt;
+
+            // Render Euclidean (Archimedean) spiral
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, spiralCanvas.width, spiralCanvas.height);
+
+            const centerX = spiralCanvas.width / 2;
+            const centerY = spiralCanvas.height / 2;
+            const maxRadius = Math.hypot(centerX, centerY);
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(currentRotation);
+
+            const b = 12; // Distance parameter between spiral loops
+            const numArms = 2; // Dual-arm symmetric spiral
+            const step = 0.02;
+
+            if (spiralMode === 'rainbow') {
+                // Render Neon Rainbow gradient-filled spiral arms
+                const gradient = ctx.createConicGradient(0, 0, 0);
+                gradient.addColorStop(0.0, `hsl(${hueOffset}, 100%, 55%)`);
+                gradient.addColorStop(0.25, `hsl(${(hueOffset + 90) % 360}, 100%, 55%)`);
+                gradient.addColorStop(0.50, `hsl(${(hueOffset + 180) % 360}, 100%, 55%)`);
+                gradient.addColorStop(0.75, `hsl(${(hueOffset + 270) % 360}, 100%, 55%)`);
+                gradient.addColorStop(1.0, `hsl(${hueOffset}, 100%, 55%)`);
+
+                ctx.fillStyle = gradient;
+                ctx.shadowColor = `hsl(${hueOffset}, 100%, 65%)`;
+                ctx.shadowBlur = 20;
+            } else if (spiralMode === 'blood') {
+                // Blood Red styling with deep crimson gradient fill and glow
+                const gradient = ctx.createRadialGradient(0, 0, 10, 0, 0, maxRadius);
+                gradient.addColorStop(0, '#ff0015');
+                gradient.addColorStop(0.6, '#8b0000');
+                gradient.addColorStop(1, '#4a0000');
+
+                ctx.fillStyle = gradient;
+                ctx.shadowColor = '#cc0000';
+                ctx.shadowBlur = 15;
+            } else if (spiralMode === 'strobe') {
+                // Strobing white flash calculations
+                const strobeBrightness = Math.sin(timestamp * 0.035) > 0 ? 100 : 15;
+                ctx.fillStyle = `hsl(0, 0%, ${strobeBrightness}%)`;
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowBlur = strobeBrightness > 50 ? 25 : 0;
+            } else {
+                // Render Black & White spiral arm
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.beginPath();
+
+            for (let arm = 0; arm < numArms; arm++) {
+                const armOffset = (arm * Math.PI);
+                ctx.moveTo(0, 0);
+
+                for (let theta = 0; theta * b < maxRadius; theta += step) {
+                    const r = b * theta;
+                    const angle = theta + armOffset;
+                    const x = r * Math.cos(angle);
+                    const y = r * Math.sin(angle);
+                    ctx.lineTo(x, y);
+                }
+
+                // Inner spiral edge trace back for filled arm geometric effect
+                for (let theta = maxRadius / b; theta >= 0; theta -= step) {
+                    const r = b * theta;
+                    const angle = theta + armOffset + 0.5;
+                    const x = r * Math.cos(angle);
+                    const y = r * Math.sin(angle);
+                    ctx.lineTo(x, y);
+                }
+            }
+
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            if (spiralActive || speedTransitionStart !== null) {
+                requestAnimationFrame(drawSpiral);
+            }
+        }
+
+        function toggleSpiral(mode) {
+            const now = performance.now();
+
+            if (!spiralActive) {
+                spiralMode = mode;
+                spiralActive = true;
+                spiralCanvas.classList.add('visible');
+                targetSpeed = baseSpeed;
+                startSpeed = 0;
+                endSpeed = targetSpeed;
+                speedTransitionStart = now;
+                lastFrameTime = now;
+                requestAnimationFrame(drawSpiral);
+            } else if (spiralActive && spiralMode !== mode) {
+                // Switch mode directly if changing active spiral type
+                spiralMode = mode;
+            } else {
+                // Reverse direction smooth 3-second transition
+                targetSpeed = -targetSpeed;
+                startSpeed = currentSpeed;
+                endSpeed = targetSpeed;
+                speedTransitionStart = now;
+            }
+        }
+
+        function hideSpiral() {
+            spiralActive = false;
+            spiralCanvas.classList.remove('visible');
+        }
+
+        // Keyboard Event Handlers
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+
+            if (key === '9') {
+                hideUI();
+                toggleSpiral('bw');
+                return;
+            }
+
+            if (key === '0') {
+                hideUI();
+                toggleSpiral('rainbow');
+                return;
+            }
+
+            if (key === '-' || key === '_') {
+                hideUI();
+                toggleSpiral('blood');
+                return;
+            }
+
+            if (key === '+' || key === '=') {
+                hideUI();
+                toggleSpiral('strobe');
+                return;
+            }
+
+            // Check if key is a standard color number or defined special action key
+            if ((colorMap[key] || specialTransitions[key]) && activeKey !== key) {
+                // Hide spiral overlay if switching to color modes
+                hideSpiral();
+
+                // Clear any existing timer loops
+                clearTimeout(keyPressTimer);
+                clearInterval(keyPressTimer);
+                
+                activeKey = key;
+                isTransitioning = true;
+                
+                // Immediately hide the button when a transition starts
+                hideUI();
+                
+                if (specialTransitions[key]) {
+                    // Apply explicit preset color target and linear duration override
+                    const config = specialTransitions[key];
+                    body.style.transition = `background-color ${config.duration} linear`;
+                    body.style.backgroundColor = config.color;
+                } else {
+                    // Regular dynamic timing transition setup for standard number keys
+                    body.style.transition = 'background-color 0.1s ease';
+                    body.style.backgroundColor = colorMap[key];
+
+                    const startTime = Date.now();
+
+                    keyPressTimer = setInterval(() => {
+                        const elapsed = (Date.now() - startTime) / 1000;
+
+                        if (elapsed >= 3.0) {
+                            body.style.transition = 'background-color 10.0s linear';
+                            clearInterval(keyPressTimer);
+                        } else if (elapsed >= 1.0) {
+                            body.style.transition = 'background-color 3.0s linear';
+                        }
+                    }, 100);
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (activeKey === key) {
+                activeKey = null;
+                clearInterval(keyPressTimer);
+                isTransitioning = false;
+            }
+        });
+
+        // Interface Management & Auto-Hide
+        function showUI() {
+            // Block the button from appearing if a color transition is active
+            if (isTransitioning) return;
+
+            fullscreenBtn.classList.add('visible');
+            clearTimeout(mouseMoveTimeout);
+            mouseMoveTimeout = setTimeout(hideUI, 1000);
+        }
+
+        function hideUI() {
+            fullscreenBtn.classList.remove('visible');
+            clearTimeout(mouseMoveTimeout);
+        }
+
+        window.addEventListener('mousemove', showUI);
+
+        // Toggle Fullscreen Functionality
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // Update button text contextually
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+                fullscreenBtn.textContent = 'Exit Full Screen';
+            } else {
+                fullscreenBtn.textContent = 'View Full Screen';
+            }
+        });
+    </script>
+</body>
+</html>
